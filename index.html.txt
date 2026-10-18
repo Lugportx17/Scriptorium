@@ -1,0 +1,1853 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#8c5a3c" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Scriptorium" />
+  <link id="dynamicManifest" rel="manifest" />
+  <title>Scriptorium 3.0 — Biblioteca Virtual Completa</title>
+
+  <!-- Biblioteca para leitura de Código de Barras ISBN pela câmera -->
+  <script src="https://unpkg.com/html5-qrcode" defer></script>
+
+  <style>
+    :root {
+      --bg-main: #f4efe6;
+      --bg-panel: #ffffff;
+      --bg-shelf: #dfd3c3;
+      --shelf-back: #cfc0ac;
+      --shelf-wood: #8c5a3c;
+      --shelf-wood-top: #a36c4b;
+      --shelf-shadow: #5e3a24;
+      --text-primary: #2b2118;
+      --text-secondary: #6e5a49;
+      --accent: #b85d19;
+      --accent-hover: #96480f;
+      --star-color: #e59819;
+      --border-color: #dcd0c0;
+      --card-shadow: rgba(43, 33, 24, 0.28);
+      --progress-bg: #e2d6c5;
+      --progress-fill: #2e7d32;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    body.night-mode {
+      --bg-main: #16120e;
+      --bg-panel: #221c17;
+      --bg-shelf: #1b1511;
+      --shelf-back: #140f0c;
+      --shelf-wood: #4e321f;
+      --shelf-wood-top: #63412a;
+      --shelf-shadow: #29180e;
+      --text-primary: #f2e9e1;
+      --text-secondary: #a8988a;
+      --accent: #e07a2e;
+      --accent-hover: #f38f43;
+      --star-color: #f5b041;
+      --border-color: #382e26;
+      --card-shadow: rgba(0, 0, 0, 0.75);
+      --progress-bg: #382e26;
+      --progress-fill: #4caf50;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100dvh;
+      transition: background-color 0.35s ease, color 0.35s ease;
+      padding-bottom: calc(85px + var(--safe-bottom));
+      overflow-x: hidden;
+    }
+
+    header {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.85rem 1.4rem;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .brand h1 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+    }
+
+    .stats-badge {
+      background: var(--bg-shelf);
+      color: var(--text-secondary);
+      padding: 0.22rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .sync-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #999;
+      margin-right: 4px;
+    }
+    .sync-dot.online { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
+    .sync-dot.syncing { background: #f39c12; animation: pulse 1s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+    }
+
+    button, .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0.52rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+
+    button:active { transform: scale(0.96); }
+
+    .btn-secondary {
+      background: var(--bg-shelf);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .status-tabs-bar {
+      max-width: 1200px;
+      margin: 1.1rem auto 0;
+      padding: 0 1.2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+    }
+
+    .status-tabs {
+      display: flex;
+      gap: 0.4rem;
+      background: var(--bg-panel);
+      padding: 0.35rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .tab-btn {
+      background: transparent;
+      color: var(--text-secondary);
+      padding: 0.48rem 0.85rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.84rem;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .view-switcher {
+      display: flex;
+      gap: 0.35rem;
+      background: var(--bg-panel);
+      padding: 0.3rem;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .view-btn {
+      background: transparent;
+      color: var(--text-secondary);
+      padding: 0.4rem 0.75rem;
+      border-radius: 7px;
+      font-size: 0.8rem;
+    }
+
+    .view-btn.active {
+      background: var(--shelf-wood);
+      color: #fff;
+    }
+
+    .toolbar {
+      max-width: 1200px;
+      margin: 0.85rem auto 1rem;
+      padding: 0 1.2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.65rem 0.95rem;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-panel);
+      color: var(--text-primary);
+    }
+
+    .filters {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    select {
+      padding: 0.65rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-panel);
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .library-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0.2rem 1.2rem;
+    }
+
+    .shelf-hint {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.7rem;
+    }
+
+    /* ESTANTE DE LOMBADAS 3D */
+    .spine-bookcase {
+      background: linear-gradient(180deg, var(--shelf-back) 0%, var(--bg-shelf) 100%);
+      border: 8px solid var(--shelf-wood);
+      border-radius: 14px;
+      box-shadow: inset 0 10px 30px rgba(0,0,0,0.22), 0 12px 30px rgba(0,0,0,0.12);
+      padding: 1.6rem 1.6rem 0.8rem;
+      min-height: 290px;
+    }
+
+    .spine-shelf-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      gap: 7px;
+      padding: 1.6rem 0.8rem 0;
+      border-bottom: 20px solid var(--shelf-wood);
+      box-shadow: 0 10px 0 var(--shelf-shadow), 0 16px 22px rgba(0,0,0,0.28);
+      position: relative;
+      margin-bottom: 2.2rem;
+      min-height: 250px;
+    }
+
+    .spine-shelf-row::after {
+      content: '';
+      position: absolute;
+      bottom: -20px;
+      left: -8px;
+      right: -8px;
+      height: 5px;
+      background: var(--shelf-wood-top);
+      border-radius: 2px;
+    }
+
+    .spine-slot {
+      perspective: 1100px;
+      position: relative;
+      z-index: 2;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .spine-slot:hover { z-index: 45; }
+      .spine-slot:hover .book-spine-obj {
+        transform: translateZ(90px) translateX(-38px) translateY(-10px) rotateY(-74deg);
+      }
+    }
+
+    .spine-slot.is-pulled { z-index: 50; }
+    .spine-slot.is-pulled .book-spine-obj {
+      transform: translateZ(90px) translateX(-42px) translateY(-12px) rotateY(-76deg);
+    }
+
+    .book-spine-obj {
+      position: relative;
+      height: var(--book-h, 225px);
+      width: var(--spine-w, 42px);
+      transform-style: preserve-3d;
+      transform-origin: center center;
+      transition: transform 0.42s cubic-bezier(0.2, 0.85, 0.25, 1);
+    }
+
+    .spine-face {
+      position: absolute;
+      inset: 0;
+      background: var(--spine-color, #5c3a21);
+      background-image:
+        linear-gradient(90deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 28%, rgba(0,0,0,0.28) 100%),
+        linear-gradient(180deg, transparent 10px, rgba(212,175,55,0.65) 10px, rgba(212,175,55,0.65) 13px, transparent 13px, transparent calc(100% - 16px), rgba(212,175,55,0.65) calc(100% - 16px), rgba(212,175,55,0.65) calc(100% - 13px), transparent calc(100% - 13px));
+      border-radius: 3px 3px 1px 1px;
+      box-shadow: inset 0 0 4px rgba(0,0,0,0.4), -2px 0 5px rgba(0,0,0,0.25);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 3px;
+      color: #fdf8f2;
+      backface-visibility: hidden;
+    }
+
+    .reading-ribbon {
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 11px;
+      height: 17px;
+      background: #e63946;
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%);
+      z-index: 3;
+    }
+
+    .spine-title {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      font-weight: 700;
+      font-size: 0.8rem;
+      max-height: 145px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    }
+
+    .spine-bottom-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      font-size: 0.64rem;
+    }
+
+    .cover-face {
+      position: absolute;
+      top: 0;
+      left: var(--spine-w, 42px);
+      width: 148px;
+      height: 100%;
+      transform-origin: left center;
+      transform: rotateY(90deg);
+      background: #2b2118;
+      border-radius: 0 5px 5px 0;
+      box-shadow: 12px 12px 28px rgba(0,0,0,0.55);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .cover-face img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .cover-face-overlay {
+      position: absolute;
+      inset: auto 0 0 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.92) 45%);
+      color: #fff;
+      padding: 1.4rem 0.6rem 0.5rem;
+      font-size: 0.72rem;
+    }
+
+    .tap-open-badge {
+      display: inline-block;
+      margin-top: 5px;
+      background: var(--accent);
+      color: #fff;
+      padding: 3px 7px;
+      border-radius: 5px;
+      font-weight: 700;
+      font-size: 0.68rem;
+    }
+
+    .mini-progress-track {
+      width: 100%;
+      height: 5px;
+      background: rgba(255,255,255,0.25);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .mini-progress-bar {
+      height: 100%;
+      background: #4caf50;
+    }
+
+    /* VITRINE DE CAPAS */
+    .bookshelf-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 2rem 1.4rem;
+      background: var(--bg-shelf);
+      padding: 2rem 1.4rem;
+      border-radius: 16px;
+      border: 2px solid var(--border-color);
+    }
+
+    .book-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      perspective: 900px;
+    }
+
+    .book-3d {
+      width: 130px;
+      height: 194px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.35s ease;
+      border-radius: 4px 8px 8px 4px;
+      box-shadow: 6px 8px 18px var(--card-shadow);
+    }
+
+    .book-card:hover .book-3d { transform: rotateY(-16deg) translateY(-6px); }
+
+    .book-3d::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 16px;
+      height: 100%;
+      background: var(--spine-color, #333);
+      transform-origin: left;
+      transform: rotateY(90deg);
+    }
+
+    .book-cover {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 3px 6px 6px 3px;
+    }
+
+    .book-fallback {
+      width: 100%;
+      height: 100%;
+      border-radius: 3px 6px 6px 3px;
+      background: var(--spine-color, #5c3a21);
+      color: #f7ede2;
+      padding: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: center;
+    }
+
+    .shelf-plank {
+      width: 100%;
+      height: 12px;
+      background: var(--shelf-wood);
+      border-bottom: 4px solid var(--shelf-shadow);
+      border-radius: 3px;
+      margin-top: 2px;
+    }
+
+    .book-info {
+      margin-top: 0.5rem;
+      text-align: center;
+      width: 100%;
+    }
+
+    .book-title {
+      font-weight: 700;
+      font-size: 0.86rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .book-author {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .book-stars { color: var(--star-color); font-size: 0.82rem; }
+
+    .card-progress-bar {
+      width: 100%;
+      height: 6px;
+      background: var(--progress-bg);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .card-progress-fill {
+      height: 100%;
+      background: var(--progress-fill);
+    }
+
+    .status-pill {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 99px;
+      margin-top: 0.2rem;
+    }
+
+    .status-read { background: rgba(46, 125, 50, 0.16); color: #2e7d32; }
+    .status-reading { background: rgba(230, 126, 34, 0.18); color: #d35400; }
+    .status-wishlist { background: rgba(52, 152, 219, 0.18); color: #2980b9; }
+
+    /* Botão Flutuante (FAB) Mobile */
+    .fab-add {
+      position: fixed;
+      right: 1.2rem;
+      bottom: calc(74px + var(--safe-bottom));
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1.8rem;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+      z-index: 55;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Modais */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal-box {
+      background: var(--bg-panel);
+      color: var(--text-primary);
+      width: 100%;
+      max-width: 720px;
+      max-height: 90dvh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      padding: 1.6rem;
+      position: relative;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+    }
+
+    .modal-close {
+      position: sticky;
+      top: 0;
+      float: right;
+      background: var(--bg-shelf);
+      color: var(--text-primary);
+      font-size: 1.1rem;
+      padding: 0.3rem 0.65rem;
+      border-radius: 50%;
+      z-index: 10;
+    }
+
+    .scanner-container {
+      display: none;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 0.8rem 0;
+      position: relative;
+      border: 2px solid var(--accent);
+    }
+
+    .scanner-container.active { display: block; }
+    #barcodeReader { width: 100%; min-height: 240px; }
+
+    .scanner-bar-top {
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      padding: 0.5rem 0.8rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.85rem;
+      margin-top: 0.9rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-group.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    input, textarea, select {
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-main);
+      color: var(--text-primary);
+    }
+
+    input[type="color"] {
+      height: 42px;
+      padding: 0.2rem;
+      width: 100%;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 95px;
+      line-height: 1.5;
+    }
+
+    .cover-search-row {
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+    }
+
+    .cover-search-row input { flex: 1; min-width: 170px; }
+
+    .cover-preview-box {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      margin-top: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .cover-preview-box img {
+      width: 60px;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .open-book-layout {
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    .open-book-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0.6rem;
+    }
+
+    .open-book-left img {
+      width: 155px;
+      height: 232px;
+      object-fit: cover;
+      border-radius: 6px;
+      box-shadow: 0 10px 25px var(--card-shadow);
+    }
+
+    .tag-genre {
+      background: var(--bg-shelf);
+      color: var(--accent);
+      padding: 0.25rem 0.7rem;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .progress-tracker-box {
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 0.9rem;
+      margin: 0.85rem 0;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.84rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .quick-page-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-top: 0.6rem;
+      align-items: center;
+    }
+
+    .quick-page-controls input { width: 80px; padding: 0.45rem; }
+
+    .review-section {
+      background: var(--bg-main);
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      margin-top: 0.4rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .quote-box {
+      margin-top: 0.85rem;
+      padding: 0.8rem 1rem;
+      border-left: 4px solid var(--accent);
+      background: var(--bg-shelf);
+      font-style: italic;
+      border-radius: 0 10px 10px 0;
+    }
+
+    .modal-footer-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.6rem;
+      margin-top: 1.2rem;
+      padding-top: 0.9rem;
+      border-top: 1px solid var(--border-color);
+      flex-wrap: wrap;
+    }
+
+    .btn-danger { background: #c0392b; }
+
+    @media (max-width: 768px) {
+      .desktop-add-btn { display: none; }
+      .fab-add { display: flex; }
+
+      .status-tabs {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 65;
+        border-radius: 16px 16px 0 0;
+        padding: 0.45rem 0.5rem calc(0.45rem + var(--safe-bottom));
+        justify-content: space-around;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+      }
+
+      .tab-btn {
+        flex: 1;
+        font-size: 0.74rem;
+        padding: 0.45rem 0.2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .view-switcher { width: 100%; }
+      .view-btn { flex: 1; }
+
+      input, select, textarea { font-size: 16px !important; }
+      .filters { width: 100%; }
+      .filters select { flex: 1; }
+
+      .spine-bookcase { padding: 1.1rem 0.6rem 0.5rem; border-width: 6px; }
+      .spine-shelf-row { gap: 5px; padding: 1.3rem 0.3rem 0; min-height: 220px; justify-content: center; }
+
+      .modal-overlay { padding: 0; align-items: flex-end; }
+      .modal-box {
+        max-height: 92dvh;
+        border-radius: 22px 22px 0 0;
+        padding: 1.3rem 1rem calc(1.4rem + var(--safe-bottom));
+      }
+
+      .form-grid, .open-book-layout { grid-template-columns: 1fr; }
+      .bookshelf-grid { grid-template-columns: repeat(2, 1fr); gap: 1.4rem 0.8rem; padding: 1.1rem 0.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <h1>📚 Scriptorium</h1>
+      <div class="stats-row" id="statsRow"></div>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="desktop-add-btn" onclick="openFormModal()">+ Adicionar</button>
+      <button type="button" class="btn-secondary" onclick="document.getElementById('kindleInput').click()" title="Importar My Clippings.txt do Kindle">📖 Kindle (.txt)</button>
+      <input type="file" id="kindleInput" accept=".txt" style="display:none" onchange="importKindleClippings(event)" />
+      <button type="button" class="btn-secondary" onclick="openCloudModal()" id="cloudBtn">
+        <span class="sync-dot" id="syncDot"></span>☁️ Nuvem
+      </button>
+      <button type="button" class="btn-secondary" id="installPwaBtn" style="display:none;" onclick="installPWA()">📲 Instalar</button>
+      <button type="button" class="btn-secondary" onclick="toggleTheme()" id="themeBtn">🌙 Luz</button>
+      <button type="button" class="btn-secondary" onclick="exportLibrary()">⬇️ Backup</button>
+      <button type="button" class="btn-secondary" onclick="document.getElementById('importInput').click()">⬆️ Restaurar</button>
+      <input type="file" id="importInput" accept=".json" style="display:none" onchange="importLibrary(event)" />
+    </div>
+  </header>
+
+  <button class="fab-add" onclick="openFormModal()" aria-label="Adicionar Livro">+</button>
+
+  <section class="status-tabs-bar">
+    <div class="status-tabs">
+      <button class="tab-btn active" onclick="setStatusFilter('all', this)">📚 Todos</button>
+      <button class="tab-btn" onclick="setStatusFilter('reading', this)">📖 Lendo</button>
+      <button class="tab-btn" onclick="setStatusFilter('read', this)">✅ Lidos</button>
+      <button class="tab-btn" onclick="setStatusFilter('wishlist', this)">🔖 Fila</button>
+    </div>
+
+    <div class="view-switcher">
+      <button class="view-btn active" id="viewSpineBtn" onclick="setViewMode('spines')">🪵 Lombadas 3D</button>
+      <button class="view-btn" id="viewGridBtn" onclick="setViewMode('grid')">🖼️ Capas Frontais</button>
+    </div>
+  </section>
+
+  <section class="toolbar">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Buscar título, autor ou notas..." oninput="renderBooks()" />
+    </div>
+    <div class="filters">
+      <select id="genreFilter" onchange="renderBooks()">
+        <option value="all">Todos os Gêneros</option>
+        <option value="Ficção / Fantasia">Ficção / Fantasia</option>
+        <option value="Tecnologia / Engenharia">Tecnologia / Engenharia</option>
+        <option value="Filosofia / História">Filosofia / História</option>
+        <option value="Desenvolvimento Pessoal">Desenvolvimento Pessoal</option>
+        <option value="Biografia / Não-Ficção">Biografia / Não-Ficção</option>
+        <option value="Outros">Outros</option>
+      </select>
+      <select id="sortFilter" onchange="renderBooks()">
+        <option value="recent">Mais Recentes</option>
+        <option value="progress">Maior Progresso (%)</option>
+        <option value="rating">Maior Nota (★)</option>
+        <option value="title">Ordem A-Z</option>
+      </select>
+    </div>
+  </section>
+
+  <main class="library-container">
+    <div class="shelf-hint" id="shelfHint"></div>
+    <div id="libraryDisplay"></div>
+  </main>
+
+  <!-- Modal Adicionar / Editar Livro -->
+  <div class="modal-overlay" id="formModal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeFormModal()">✕</button>
+      <h2 id="formModalTitle">Adicionar Livro</h2>
+
+      <!-- Scanner de Código de Barras ISBN -->
+      <div class="scanner-container" id="scannerContainer">
+        <div class="scanner-bar-top">
+          <span>📷 Aponte para o código de barras (ISBN) do livro</span>
+          <button type="button" class="btn-danger" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="stopBarcodeScanner()">Fechar Câmera</button>
+        </div>
+        <div id="barcodeReader"></div>
+      </div>
+
+      <form id="bookForm" onsubmit="saveBook(event)">
+        <input type="hidden" id="bookId" />
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Título do Livro ou Código ISBN *</label>
+            <div class="cover-search-row">
+              <input type="text" id="titleInput" required placeholder="Digite o título ou ISBN..." />
+              <button type="button" class="btn-secondary" onclick="fetchBookFromAPI()" id="apiSearchBtn">🔍 Buscar</button>
+              <button type="button" onclick="startBarcodeScanner()" title="Escanear código de barras pela câmera">📷 Ler ISBN</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Autor(a) *</label>
+            <input type="text" id="authorInput" required placeholder="Ex: J.R.R. Tolkien" />
+          </div>
+
+          <div class="form-group">
+            <label>Status da Leitura *</label>
+            <select id="statusInput" onchange="handleStatusChange()">
+              <option value="read">✅ Já Lido (Concluído)</option>
+              <option value="reading">📖 Lendo Agora</option>
+              <option value="wishlist">🔖 Quero Ler (Na Fila)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Página Atual</label>
+            <input type="number" id="currentPageInput" min="0" value="0" />
+          </div>
+
+          <div class="form-group">
+            <label>Total de Páginas</label>
+            <input type="number" id="totalPagesInput" min="1" value="300" />
+          </div>
+
+          <div class="form-group">
+            <label>Gênero</label>
+            <select id="genreInput">
+              <option value="Ficção / Fantasia">Ficção / Fantasia</option>
+              <option value="Tecnologia / Engenharia">Tecnologia / Engenharia</option>
+              <option value="Filosofia / História">Filosofia / História</option>
+              <option value="Desenvolvimento Pessoal">Desenvolvimento Pessoal</option>
+              <option value="Biografia / Não-Ficção">Biografia / Não-Ficção</option>
+              <option value="Outros">Outros</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Sua Avaliação (Estrelas)</label>
+            <select id="ratingInput">
+              <option value="5">★★★★★ (5 - Obra-prima)</option>
+              <option value="4">★★★★☆ (4 - Muito bom)</option>
+              <option value="3">★★★☆☆ (3 - Razoável)</option>
+              <option value="2">★★☆☆☆ (2 - Fraco)</option>
+              <option value="1">★☆☆☆☆ (1 - Não recomendo)</option>
+              <option value="0">☆☆☆☆☆ (Ainda sem nota)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Cor da Lombada</label>
+            <input type="color" id="spineColorInput" value="#6b2d26" />
+          </div>
+
+          <div class="form-group">
+            <label>Data</label>
+            <input type="date" id="dateInput" />
+          </div>
+
+          <div class="form-group full">
+            <label>Capa do Livro (Link ou Foto da Galeria)</label>
+            <input type="text" id="coverUrlInput" placeholder="Preenchido na busca/scanner ou cole um link..." oninput="updatePreview(this.value)" />
+            <div class="cover-preview-box">
+              <img id="coverPreview" src="" alt="Prévia" style="display:none;" />
+              <input type="file" id="coverFileInput" accept="image/*" onchange="handleFileUpload(event)" />
+            </div>
+          </div>
+
+          <div class="form-group full">
+            <label>Minhas Opiniões, Resumo ou Notas</label>
+            <textarea id="reviewInput" placeholder="Registre sua análise sincera sobre o livro..."></textarea>
+          </div>
+
+          <div class="form-group full">
+            <label>Citação Favorita (Opcional)</label>
+            <input type="text" id="quoteInput" placeholder="Ex: 'O medo é o assassino da mente...'" />
+          </div>
+        </div>
+
+        <div class="modal-footer-actions">
+          <button type="button" class="btn-secondary" onclick="closeFormModal()">Cancelar</button>
+          <button type="submit">Salvar na Estante</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Sincronização Google Sheets -->
+  <div class="modal-overlay" id="cloudModal">
+    <div class="modal-box" style="max-width:540px;">
+      <button class="modal-close" onclick="closeCloudModal()">✕</button>
+      <h2>☁️ Sincronização Google Sheets</h2>
+      <p style="font-size:0.86rem; color:var(--text-secondary); margin-top:0.4rem;">
+        Cole abaixo a URL do seu Web App do Google Apps Script (terminada em <code>/exec</code>) para sincronizar sua biblioteca entre o PC e o telemóvel/celular.
+      </p>
+      <div class="form-group" style="margin-top:1rem;">
+        <label>URL do Google Apps Script Web App</label>
+        <input type="url" id="gasUrlInput" placeholder="https://script.google.com/macros/s/.../exec" />
+      </div>
+      <div id="cloudStatusMsg" style="font-size:0.84rem; margin-top:0.75rem; font-weight:600;"></div>
+      <div class="modal-footer-actions">
+        <button type="button" class="btn-secondary" onclick="saveCloudUrl()">Salvar URL</button>
+        <button type="button" class="btn-secondary" onclick="pullFromCloud()">⬇️ Baixar da Planilha</button>
+        <button type="button" onclick="pushToCloud()">⬆️ Enviar p/ Planilha</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Visualização (Livro Aberto) -->
+  <div class="modal-overlay" id="viewModal">
+    <div class="modal-box" id="viewModalContent"></div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'scriptorium_books_v2';
+    const GAS_URL_KEY = 'scriptorium_gas_url';
+
+    let books = [];
+    let activeStatusFilter = 'all';
+    let activeViewMode = 'spines';
+    let pulledBookId = null;
+    let html5QrScanner = null;
+    let deferredInstallPrompt = null;
+
+    const spinePalette = ['#6b2d26', '#1f4e5f', '#2d5a27', '#4a314d', '#7f4f24', '#2b3a67', '#802f40'];
+
+    const starterBooks = [
+      {
+        id: 'demo-1',
+        title: '1984',
+        author: 'George Orwell',
+        status: 'read',
+        currentPage: 336,
+        totalPages: 336,
+        spineColor: '#6b2d26',
+        genre: 'Ficção / Fantasia',
+        rating: 5,
+        dateFinished: '2026-08-15',
+        cover: 'https://covers.openlibrary.org/b/id/12648655-L.jpg',
+        review: 'Uma leitura pesada e extremamente atual sobre vigilância, manipulação da linguagem (Novilíngua) e controle histórico.',
+        quote: 'Quem controla o passado controla o futuro.'
+      },
+      {
+        id: 'demo-2',
+        title: 'Código Limpo',
+        author: 'Robert C. Martin',
+        status: 'reading',
+        currentPage: 185,
+        totalPages: 425,
+        spineColor: '#1f4e5f',
+        genre: 'Tecnologia / Engenharia',
+        rating: 5,
+        dateFinished: '2026-10-18',
+        cover: 'https://covers.openlibrary.org/b/id/14842144-L.jpg',
+        review: 'Excelente guia sobre funções de responsabilidade única e código legível.',
+        quote: 'Bons programadores escrevem código que humanos podem entender.'
+      }
+    ];
+
+    // 1. PWA Instalável
+    function setupPWA() {
+      const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="36" fill="#8c5a3c"/><rect x="34" y="36" width="28" height="120" rx="4" fill="#6b2d26"/><rect x="68" y="28" width="32" height="128" rx="4" fill="#1f4e5f"/><rect x="108" y="40" width="28" height="116" rx="4" fill="#2d5a27" transform="rotate(-10 108 156)"/></svg>`;
+      const iconDataUrl = 'data:image/svg+xml;base64,' + btoa(iconSvg);
+
+      const manifest = {
+        name: 'Scriptorium — Minha Biblioteca Virtual',
+        short_name: 'Scriptorium',
+        start_url: '.',
+        display: 'standalone',
+        background_color: '#f4efe6',
+        theme_color: '#8c5a3c',
+        icons: [{ src: iconDataUrl, sizes: '192x192 512x512', type: 'image/svg+xml', purpose: 'any maskable' }]
+      };
+
+      const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+      document.getElementById('dynamicManifest').setAttribute('href', URL.createObjectURL(manifestBlob));
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        document.getElementById('installPwaBtn').style.display = 'inline-flex';
+      });
+    }
+
+    async function installPWA() {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      document.getElementById('installPwaBtn').style.display = 'none';
+    }
+
+    // 2. Scanner de Código de Barras ISBN pela Câmera
+    async function startBarcodeScanner() {
+      const container = document.getElementById('scannerContainer');
+      container.classList.add('active');
+
+      if (typeof Html5Qrcode === 'undefined') {
+        alert('O módulo de câmera ainda está carregando. Verifique sua conexão.');
+        return;
+      }
+
+      if (!html5QrScanner) {
+        html5QrScanner = new Html5Qrcode('barcodeReader');
+      }
+
+      try {
+        await html5QrScanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 240, height: 110 } },
+          (decodedText) => {
+            const cleanCode = decodedText.replace(/\D/g, '');
+            if (cleanCode.length === 10 || cleanCode.length === 13) {
+              if (navigator.vibrate) navigator.vibrate(100);
+              stopBarcodeScanner();
+              document.getElementById('titleInput').value = cleanCode;
+              fetchBookFromAPI(cleanCode);
+            }
+          },
+          () => {}
+        );
+      } catch (err) {
+        alert('Não foi possível acessar a câmera. Certifique-se de estar acessando via HTTPS (GitHub Pages).');
+        container.classList.remove('active');
+      }
+    }
+
+    async function stopBarcodeScanner() {
+      const container = document.getElementById('scannerContainer');
+      container.classList.remove('active');
+      if (html5QrScanner && html5QrScanner.isScanning) {
+        try { await html5QrScanner.stop(); } catch (e) {}
+      }
+    }
+
+    async function fetchBookFromAPI(isbnOverride = null) {
+      const rawInput = (isbnOverride || document.getElementById('titleInput').value).trim();
+      const btn = document.getElementById('apiSearchBtn');
+      if (!rawInput) {
+        alert('Digite o título do livro ou escaneie o código ISBN primeiro.');
+        return;
+      }
+
+      btn.textContent = '⏳...';
+      btn.disabled = true;
+
+      try {
+        const isIsbn = /^(978|979|\d{9}[\dXx]|\d{13})$/.test(rawInput.replace(/[- ]/g, ''));
+        const queryParam = isIsbn
+          ? `isbn=${encodeURIComponent(rawInput.replace(/[- ]/g, ''))}`
+          : `q=${encodeURIComponent(rawInput)}&limit=5`;
+
+        const res = await fetch(`https://openlibrary.org/search.json?${queryParam}`);
+        const data = await res.json();
+        const match = data.docs.find(d => d.cover_i) || data.docs[0];
+
+        if (match) {
+          if (match.title) document.getElementById('titleInput').value = match.title;
+          if (match.author_name && match.author_name[0]) {
+            document.getElementById('authorInput').value = match.author_name[0];
+          }
+          if (match.cover_i) {
+            const coverUrl = `https://covers.openlibrary.org/b/id/${match.cover_i}-L.jpg`;
+            document.getElementById('coverUrlInput').value = coverUrl;
+            updatePreview(coverUrl);
+          }
+          if (match.number_of_pages_median) {
+            document.getElementById('totalPagesInput').value = match.number_of_pages_median;
+            if (document.getElementById('statusInput').value === 'read') {
+              document.getElementById('currentPageInput').value = match.number_of_pages_median;
+            }
+          }
+        } else {
+          alert('Livro não encontrado na Open Library. Preencha manualmente.');
+        }
+      } catch (err) {
+        alert('Erro ao consultar a Open Library.');
+      } finally {
+        btn.textContent = '🔍 Buscar';
+        btn.disabled = false;
+      }
+    }
+
+    // 3. Importador Automático do Kindle (My Clippings.txt)
+    function importKindleClippings(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        const rawText = e.target.result;
+        const blocks = rawText.split('==========');
+        let importedCount = 0;
+        const kindleBooksMap = {};
+
+        blocks.forEach(block => {
+          const lines = block.trim().split('\n');
+          if (lines.length < 2) return;
+
+          const headerLine = lines[0].trim();
+          const authorMatch = headerLine.match(/\(([^)]+)\)$/);
+
+          let author = authorMatch ? authorMatch[1] : 'Autor Desconhecido';
+          let title = authorMatch ? headerLine.replace(/\s*\([^)]+\)$/, '').trim() : headerLine;
+          title = title.replace(/^\ufeff/, '').trim();
+
+          const quoteText = lines.slice(2).join(' ').trim();
+
+          if (title && quoteText) {
+            if (!kindleBooksMap[title]) {
+              kindleBooksMap[title] = { title, author, quotes: [] };
+            }
+            if (!kindleBooksMap[title].quotes.includes(quoteText)) {
+              kindleBooksMap[title].quotes.push(quoteText);
+            }
+          }
+        });
+
+        for (const kBook of Object.values(kindleBooksMap)) {
+          const existing = books.find(b => b.title.toLowerCase() === kBook.title.toLowerCase());
+          if (existing) {
+            existing.quote = kBook.quotes[kBook.quotes.length - 1];
+            existing.review = (existing.review || '') + '\n\n[Kindle Destaques]:\n- ' + kBook.quotes.join('\n- ');
+          } else {
+            const newBook = {
+              id: 'kindle-' + Date.now() + Math.random().toString(36).slice(2, 6),
+              title: kBook.title,
+              author: kBook.author,
+              status: 'read',
+              currentPage: 300,
+              totalPages: 300,
+              spineColor: spinePalette[importedCount % spinePalette.length],
+              genre: 'Outros',
+              rating: 5,
+              dateFinished: new Date().toISOString().slice(0, 10),
+              cover: '',
+              review: 'Importado do Kindle.\n\nDestaques:\n- ' + kBook.quotes.join('\n- '),
+              quote: kBook.quotes[kBook.quotes.length - 1] || ''
+            };
+            books.unshift(newBook);
+            importedCount++;
+          }
+        }
+
+        saveToStorage();
+        renderBooks();
+        alert(`Kindle sincronizado! ${importedCount} novos livros importados com suas citações.`);
+        event.target.value = '';
+      };
+
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    // 4. Sincronização Google Sheets
+    function updateSyncDot(state) {
+      const dot = document.getElementById('syncDot');
+      dot.className = 'sync-dot';
+      if (state === 'online') dot.classList.add('online');
+      if (state === 'syncing') dot.classList.add('syncing');
+    }
+
+    function openCloudModal() {
+      document.getElementById('gasUrlInput').value = localStorage.getItem(GAS_URL_KEY) || '';
+      document.getElementById('cloudStatusMsg').textContent = '';
+      document.getElementById('cloudModal').classList.add('active');
+    }
+
+    function closeCloudModal() {
+      document.getElementById('cloudModal').classList.remove('active');
+    }
+
+    function saveCloudUrl() {
+      const url = document.getElementById('gasUrlInput').value.trim();
+      localStorage.setItem(GAS_URL_KEY, url);
+      updateSyncDot(url ? 'online' : '');
+      document.getElementById('cloudStatusMsg').textContent = '✅ URL salva com sucesso!';
+    }
+
+    async function pushToCloud(silent = false) {
+      const url = localStorage.getItem(GAS_URL_KEY);
+      if (!url) {
+        if (!silent) alert('Configure a URL do Google Apps Script primeiro.');
+        return;
+      }
+
+      updateSyncDot('syncing');
+      const msg = document.getElementById('cloudStatusMsg');
+      if (!silent) msg.textContent = '⏳ Enviando livros para o Google Sheets...';
+
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ books })
+        });
+        const data = await res.json();
+        updateSyncDot('online');
+        if (!silent) msg.textContent = `✅ Sincronizado! (${data.count || books.length} livros salvos).`;
+      } catch (err) {
+        updateSyncDot('');
+        if (!silent) msg.textContent = '❌ Erro ao enviar. Verifique a permissão "Qualquer pessoa" no Apps Script.';
+      }
+    }
+
+    async function pullFromCloud(silent = false) {
+      const url = localStorage.getItem(GAS_URL_KEY);
+      if (!url) return;
+
+      updateSyncDot('syncing');
+      const msg = document.getElementById('cloudStatusMsg');
+      if (!silent) msg.textContent = '⏳ Baixando livros da planilha...';
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data && Array.isArray(data.books) && data.books.length > 0) {
+          books = data.books;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+          renderBooks();
+          if (!silent) msg.textContent = `✅ ${books.length} livros carregados!`;
+        } else if (!silent) {
+          msg.textContent = 'ℹ️ A planilha ainda está vazia.';
+        }
+        updateSyncDot('online');
+      } catch (err) {
+        updateSyncDot('');
+        if (!silent) msg.textContent = '❌ Erro ao buscar dados da planilha.';
+      }
+    }
+
+    // 5. Lógica da Estante e Interação Mobile
+    function isTouchDevice() {
+      return window.matchMedia('(hover: none), (pointer: coarse)').matches;
+    }
+
+    function updateHintText() {
+      const hint = document.getElementById('shelfHint');
+      if (activeViewMode !== 'spines') {
+        hint.style.display = 'none';
+        return;
+      }
+      hint.style.display = 'block';
+      hint.textContent = isTouchDevice()
+        ? '👆 Toque 1x na lombada para puxar o livro em 3D e toque novamente para abrir suas notas.'
+        : '💡 Passe o rato/mouse sobre qualquer lombada para puxar o livro em 3D e clique para abrir suas notas.';
+    }
+
+    function init() {
+      setupPWA();
+      const saved = localStorage.getItem(STORAGE_KEY);
+      books = saved ? JSON.parse(saved) : starterBooks;
+      if (!saved) saveToStorage();
+
+      const gasUrl = localStorage.getItem(GAS_URL_KEY);
+      if (gasUrl) {
+        updateSyncDot('online');
+        pullFromCloud(true);
+      }
+
+      document.addEventListener('click', (e) => {
+        if (pulledBookId && !e.target.closest('.spine-slot')) {
+          pulledBookId = null;
+          document.querySelectorAll('.spine-slot.is-pulled').forEach(el => el.classList.remove('is-pulled'));
+        }
+      });
+
+      let resizeTimer;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          updateHintText();
+          if (activeViewMode === 'spines') renderBooks();
+        }, 180);
+      });
+
+      updateHintText();
+      renderBooks();
+    }
+
+    function saveToStorage() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+      updateStats();
+      if (localStorage.getItem(GAS_URL_KEY)) {
+        pushToCloud(true);
+      }
+    }
+
+    function getProgressPercent(book) {
+      if (book.status === 'read') return 100;
+      if (book.status === 'wishlist') return 0;
+      const total = Math.max(1, book.totalPages || 1);
+      const curr = Math.max(0, book.currentPage || 0);
+      return Math.min(100, Math.round((curr / total) * 100));
+    }
+
+    function updateStats() {
+      const readCount = books.filter(b => b.status === 'read').length;
+      const readingCount = books.filter(b => b.status === 'reading').length;
+      const wishCount = books.filter(b => b.status === 'wishlist').length;
+
+      document.getElementById('statsRow').innerHTML = `
+        <span class="stats-badge">✅ ${readCount}</span>
+        <span class="stats-badge">📖 ${readingCount}</span>
+        <span class="stats-badge">🔖 ${wishCount}</span>
+      `;
+    }
+
+    function setStatusFilter(status, btnEl) {
+      activeStatusFilter = status;
+      pulledBookId = null;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      btnEl.classList.add('active');
+      renderBooks();
+    }
+
+    function setViewMode(mode) {
+      activeViewMode = mode;
+      pulledBookId = null;
+      document.getElementById('viewSpineBtn').classList.toggle('active', mode === 'spines');
+      document.getElementById('viewGridBtn').classList.toggle('active', mode === 'grid');
+      updateHintText();
+      renderBooks();
+    }
+
+    function handleSpineClick(event, bookId) {
+      event.stopPropagation();
+      if (isTouchDevice() && pulledBookId !== bookId) {
+        pulledBookId = bookId;
+        document.querySelectorAll('.spine-slot').forEach(slot => {
+          slot.classList.toggle('is-pulled', slot.dataset.id === bookId);
+        });
+        return;
+      }
+      pulledBookId = null;
+      document.querySelectorAll('.spine-slot.is-pulled').forEach(el => el.classList.remove('is-pulled'));
+      openViewModal(bookId);
+    }
+
+    function getBooksPerShelf() {
+      const w = window.innerWidth;
+      if (w < 420) return 5;
+      if (w < 600) return 7;
+      if (w < 900) return 10;
+      return 14;
+    }
+
+    function renderBooks() {
+      updateStats();
+      const container = document.getElementById('libraryDisplay');
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      const genre = document.getElementById('genreFilter').value;
+      const sort = document.getElementById('sortFilter').value;
+
+      let filtered = books.filter(b => {
+        const matchesStatus = activeStatusFilter === 'all' || b.status === activeStatusFilter;
+        const matchesQuery =
+          b.title.toLowerCase().includes(query) ||
+          b.author.toLowerCase().includes(query) ||
+          (b.review || '').toLowerCase().includes(query);
+        const matchesGenre = genre === 'all' || b.genre === genre;
+        return matchesStatus && matchesQuery && matchesGenre;
+      });
+
+      filtered.sort((a, b) => {
+        if (sort === 'rating') return (b.rating || 0) - (a.rating || 0);
+        if (sort === 'progress') return getProgressPercent(b) - getProgressPercent(a);
+        if (sort === 'title') return a.title.localeCompare(b.title);
+        return (b.dateFinished || '').localeCompare(a.dateFinished || '');
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="bookshelf-grid"><div style="grid-column:1/-1;text-align:center;padding:2rem;">Nenhum livro encontrado neste filtro.</div></div>`;
+        return;
+      }
+
+      if (activeViewMode === 'spines') {
+        renderSpineShelf(filtered, container);
+      } else {
+        renderCoverGrid(filtered, container);
+      }
+    }
+
+    function renderSpineShelf(list, container) {
+      const perShelf = getBooksPerShelf();
+      const shelves = [];
+      for (let i = 0; i < list.length; i += perShelf) {
+        shelves.push(list.slice(i, i + perShelf));
+      }
+
+      const shelvesHtml = shelves.map(shelfBooks => {
+        const booksHtml = shelfBooks.map(book => {
+          const pct = getProgressPercent(book);
+          const total = book.totalPages || 300;
+          const spineW = Math.min(52, Math.max(36, Math.round(total / 12)));
+          const bookH = Math.min(235, Math.max(202, 205 + (book.title.length % 4) * 7));
+          const spineColor = book.spineColor || '#6b2d26';
+          const stars = book.rating > 0 ? '★'.repeat(book.rating) : '—';
+          const isPulledClass = pulledBookId === book.id ? 'is-pulled' : '';
+
+          const coverImg = book.cover
+            ? `<img src="${book.cover}" alt="${book.title}" onerror="this.style.display='none'" />`
+            : `<div class="book-fallback" style="--spine-color:${spineColor}"><h4>${book.title}</h4><span>${book.author}</span></div>`;
+
+          return `
+            <div class="spine-slot ${isPulledClass}" data-id="${book.id}" onclick="handleSpineClick(event, '${book.id}')">
+              <div class="book-spine-obj" style="--spine-w:${spineW}px; --book-h:${bookH}px; --spine-color:${spineColor};">
+                ${book.status === 'reading' ? `<div class="reading-ribbon"></div>` : ''}
+                <div class="spine-face">
+                  <div class="spine-title">${book.title}</div>
+                  <div class="spine-bottom-meta">
+                    <span>${stars}</span>
+                    <span>${pct}%</span>
+                  </div>
+                </div>
+                <div class="cover-face">
+                  ${coverImg}
+                  <div class="cover-face-overlay">
+                    <strong>${book.title}</strong>
+                    <div>${book.currentPage || 0}/${total}p (${pct}%)</div>
+                    <div class="mini-progress-track">
+                      <div class="mini-progress-bar" style="width:${pct}%"></div>
+                    </div>
+                    <span class="tap-open-badge">Abrir Notas 📖</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        return `<div class="spine-shelf-row">${booksHtml}</div>`;
+      }).join('');
+
+      container.innerHTML = `<div class="spine-bookcase">${shelvesHtml}</div>`;
+    }
+
+    function renderCoverGrid(list, container) {
+      const cardsHtml = list.map(book => {
+        const pct = getProgressPercent(book);
+        const stars = book.rating > 0 ? '★'.repeat(book.rating) + '☆'.repeat(5 - book.rating) : 'Sem nota';
+        const statusMap = {
+          read: { label: '✅ Lido', cls: 'status-read' },
+          reading: { label: `📖 ${pct}%`, cls: 'status-reading' },
+          wishlist: { label: '🔖 Fila', cls: 'status-wishlist' }
+        };
+        const st = statusMap[book.status] || statusMap.read;
+
+        const coverHtml = book.cover
+          ? `<img class="book-cover" src="${book.cover}" alt="${book.title}" onerror="this.style.display='none'" />`
+          : `<div class="book-fallback" style="--spine-color:${book.spineColor || '#5c3a21'}"><h4>${book.title}</h4><span>${book.author}</span></div>`;
+
+        return `
+          <div class="book-card" onclick="openViewModal('${book.id}')">
+            <div class="book-3d" style="--spine-color:${book.spineColor || '#333'}">${coverHtml}</div>
+            <div class="shelf-plank"></div>
+            <div class="book-info">
+              <div class="book-title">${book.title}</div>
+              <div class="book-author">${book.author}</div>
+              <span class="status-pill ${st.cls}">${st.label}</span>
+              <div class="card-progress-bar"><div class="card-progress-fill" style="width:${pct}%"></div></div>
+              <div class="book-stars">${stars}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      container.innerHTML = `<div class="bookshelf-grid">${cardsHtml}</div>`;
+    }
+
+    function handleStatusChange() {
+      const status = document.getElementById('statusInput').value;
+      const total = parseInt(document.getElementById('totalPagesInput').value, 10) || 300;
+      const currInput = document.getElementById('currentPageInput');
+      if (status === 'read') currInput.value = total;
+      else if (status === 'wishlist') currInput.value = 0;
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const scale = Math.min(1, 360 / img.width);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.8);
+          document.getElementById('coverUrlInput').value = compressed;
+          updatePreview(compressed);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function updatePreview(url) {
+      const img = document.getElementById('coverPreview');
+      if (url && url.trim() !== '') {
+        img.src = url;
+        img.style.display = 'block';
+      } else {
+        img.style.display = 'none';
+      }
+    }
+
+    function openFormModal(editId = null) {
+      const modal = document.getElementById('formModal');
+      document.getElementById('bookForm').reset();
+      updatePreview('');
+
+      if (editId) {
+        const book = books.find(b => b.id === editId);
+        if (!book) return;
+        document.getElementById('formModalTitle').textContent = 'Editar Livro';
+        document.getElementById('bookId').value = book.id;
+        document.getElementById('titleInput').value = book.title;
+        document.getElementById('authorInput').value = book.author;
+        document.getElementById('statusInput').value = book.status || 'read';
+        document.getElementById('currentPageInput').value = book.currentPage || 0;
+        document.getElementById('totalPagesInput').value = book.totalPages || 300;
+        document.getElementById('spineColorInput').value = book.spineColor || '#6b2d26';
+        document.getElementById('genreInput').value = book.genre;
+        document.getElementById('ratingInput').value = book.rating !== undefined ? book.rating : 5;
+        document.getElementById('dateInput').value = book.dateFinished || '';
+        document.getElementById('coverUrlInput').value = book.cover || '';
+        document.getElementById('reviewInput').value = book.review || '';
+        document.getElementById('quoteInput').value = book.quote || '';
+        updatePreview(book.cover);
+      } else {
+        document.getElementById('formModalTitle').textContent = 'Adicionar Livro';
+        document.getElementById('bookId').value = '';
+        document.getElementById('dateInput').valueAsDate = new Date();
+        document.getElementById('spineColorInput').value = spinePalette[Math.floor(Math.random() * spinePalette.length)];
+        document.getElementById('statusInput').value = activeStatusFilter === 'all' ? 'reading' : activeStatusFilter;
+        handleStatusChange();
+      }
+      modal.classList.add('active');
+    }
+
+    function closeFormModal() {
+      stopBarcodeScanner();
+      document.getElementById('formModal').classList.remove('active');
+    }
+
+    function saveBook(event) {
+      event.preventDefault();
+      const id = document.getElementById('bookId').value;
+      const totalPages = Math.max(1, parseInt(document.getElementById('totalPagesInput').value, 10) || 300);
+      let currentPage = Math.max(0, parseInt(document.getElementById('currentPageInput').value, 10) || 0);
+      let status = document.getElementById('statusInput').value;
+
+      if (currentPage >= totalPages && status === 'reading') {
+        currentPage = totalPages;
+        status = 'read';
+      } else if (status === 'read') {
+        currentPage = totalPages;
+      }
+
+      const bookData = {
+        id: id || 'book-' + Date.now(),
+        title: document.getElementById('titleInput').value.trim(),
+        author: document.getElementById('authorInput').value.trim(),
+        status,
+        currentPage,
+        totalPages,
+        spineColor: document.getElementById('spineColorInput').value,
+        genre: document.getElementById('genreInput').value,
+        rating: parseInt(document.getElementById('ratingInput').value, 10),
+        dateFinished: document.getElementById('dateInput').value,
+        cover: document.getElementById('coverUrlInput').value.trim(),
+        review: document.getElementById('reviewInput').value.trim() || 'Sem anotações registradas ainda.',
+        quote: document.getElementById('quoteInput').value.trim()
+      };
+
+      if (id) {
+        const index = books.findIndex(b => b.id === id);
+        if (index !== -1) books[index] = bookData;
+      } else {
+        books.unshift(bookData);
+      }
+
+      saveToStorage();
+      renderBooks();
+      closeFormModal();
+    }
+
+    function updateQuickProgress(id, deltaPages = null) {
+      const book = books.find(b => b.id === id);
+      if (!book) return;
+      const total = book.totalPages || 300;
+      let newPage = book.currentPage || 0;
+
+      if (deltaPages !== null) {
+        newPage = Math.min(total, Math.max(0, newPage + deltaPages));
+      } else {
+        const manualVal = parseInt(document.getElementById('quickPageInput').value, 10);
+        if (!isNaN(manualVal)) newPage = Math.min(total, Math.max(0, manualVal));
+      }
+
+      book.currentPage = newPage;
+      if (newPage >= total) {
+        book.status = 'read';
+        book.dateFinished = new Date().toISOString().slice(0, 10);
+      } else if (newPage > 0) {
+        book.status = 'reading';
+      }
+
+      saveToStorage();
+      renderBooks();
+      openViewModal(id);
+    }
+
+    function openViewModal(id) {
+      const book = books.find(b => b.id === id);
+      if (!book) return;
+      const pct = getProgressPercent(book);
+      const stars = book.rating > 0 ? '★'.repeat(book.rating) + '☆'.repeat(5 - book.rating) : 'Ainda sem nota';
+
+      document.getElementById('viewModalContent').innerHTML = `
+        <button class="modal-close" onclick="closeViewModal()">✕</button>
+        <div class="open-book-layout">
+          <div class="open-book-left">
+            ${book.cover ? `<img src="${book.cover}" alt="${book.title}" />` : ''}
+            <span class="tag-genre">${book.genre}</span>
+            <div class="book-stars" style="font-size:1.15rem;">${stars}</div>
+          </div>
+          <div class="open-book-right">
+            <h2>${book.title}</h2>
+            <div style="color:var(--text-secondary);margin-bottom:0.8rem;">por <strong>${book.author}</strong></div>
+
+            <div class="progress-tracker-box">
+              <div class="progress-header">
+                <span>Página ${book.currentPage || 0} de ${book.totalPages || 300}</span>
+                <span>${pct}%</span>
+              </div>
+              <div class="card-progress-bar" style="height:9px;">
+                <div class="card-progress-fill" style="width:${pct}%"></div>
+              </div>
+              <div class="quick-page-controls">
+                <button type="button" class="btn-secondary" onclick="updateQuickProgress('${book.id}', 5)">+5p</button>
+                <button type="button" class="btn-secondary" onclick="updateQuickProgress('${book.id}', 15)">+15p</button>
+                <input type="number" id="quickPageInput" value="${book.currentPage || 0}" min="0" max="${book.totalPages || 300}" />
+                <button type="button" onclick="updateQuickProgress('${book.id}', null)">Salvar Pág</button>
+              </div>
+            </div>
+
+            <label>Minhas Opiniões & Anotações:</label>
+            <div class="review-section">${book.review}</div>
+            ${book.quote ? `<div class="quote-box">"${book.quote}"</div>` : ''}
+
+            <div class="modal-footer-actions">
+              <button type="button" class="btn-secondary" onclick="closeViewModal(); openFormModal('${book.id}')">✏️ Editar</button>
+              <button type="button" class="btn-danger" onclick="deleteBook('${book.id}')">🗑️ Excluir</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.getElementById('viewModal').classList.add('active');
+    }
+
+    function closeViewModal() {
+      document.getElementById('viewModal').classList.remove('active');
+    }
+
+    function deleteBook(id) {
+      if (!confirm('Remover este livro da sua estante?')) return;
+      books = books.filter(b => b.id !== id);
+      saveToStorage();
+      renderBooks();
+      closeViewModal();
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('night-mode');
+      const isNight = document.body.classList.contains('night-mode');
+      document.getElementById('themeBtn').textContent = isNight ? '☀️ Dia' : '🌙 Luz';
+    }
+
+    function exportLibrary() {
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(books, null, 2));
+      const a = document.createElement('a');
+      a.href = dataStr;
+      a.download = `minha_biblioteca_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+    }
+
+    function importLibrary(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (Array.isArray(imported)) {
+            books = imported;
+            saveToStorage();
+            renderBooks();
+            alert('Biblioteca restaurada com sucesso!');
+          }
+        } catch (err) {
+          alert('Arquivo JSON inválido.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    init();
+  </script>
+</body>
+</html>
